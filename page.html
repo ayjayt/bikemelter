@@ -2,14 +2,224 @@
 	<head>
 		<title>Bike Melter</title>
 	</head>
+	<script type="text/javascript">
+		// TODO: 404
+		var OnInterval
+		var OffInterval
+		var RepeatCount
+		var sendingProgramRe = /^\s*On (\d*) Minute[s]?\s*Off (\d*) Minute[s]?\s*(\d*) Time[s]?\s*$/i
+		var receivingProgramRe = /^\s*(\d*)\s*(\d*)\s*(\d*)\s*$/
+		function setError(req) {
+			req.timeout = 1200;
+			req.onerror = function() {
+				alert("There was an error, please try refreshing, restarting the device, etc. Email ajpikul@gmail.com with details")
+				}
+			return req
+		}
+		function refreshProgramDetails() {
+			req = setError(new XMLHttpRequest())
+			req.addEventListener("load", function() {
+				match = this.responseText.match(receivingProgramRe)
+				if ( (match == null) || (match.length != 4) ) {
+					document.getElementById("programDetails").innerHTML = "error: ajpikul@gmail.com please or on facebook w/ how it occured"
+					return
+				}
+				var string = ""
+				OnInterval = parseInt(match[1])
+				if (OnInterval) {
+					string = "On " + match[1] + " more minute"
+					if (OnInterval != 1) {
+						string += "s"
+					}
+				}
+
+				OffInterval = parseInt(match[2])
+				if (OffInterval) {
+					string += "\nOff " + match[2] + " more minute"
+					if (OffInterval != 1) {
+						string += "s"
+					}
+				}
+				
+				RepeatCount = parseInt(match[3])
+				if (RepeatCount) {
+					string += "\n" + match[3] + " more time"
+					if (RepeatCount != 1) {
+						string += "s"
+					}
+				}
+				document.getElementById("programDetails").innerHTML = string
+			})
+			req.open("GET", "/details")
+			req.send()
+		}
+		function refreshNextProgram() {
+			req = setError(new XMLHttpRequest())
+			req.addEventListener("load", function() {
+				match = this.responseText.match(receivingProgramRe)
+				if ( (match == null) || (match.length != 4) ) {
+					document.getElementById("nextProgram").innerHTML = "error: ajpikul@gmail.com please or on facebook w/ how it occured"
+					return
+				}
+				var string
+				string = "On " + match[1] + " minute"
+				OnInterval = parseInt(match[1])
+				if (OnInterval != 1) {
+					string += "s"
+				}
+				string += "\nOff " + match[2] + " minute"
+				OffInterval = parseInt(match[2])
+				if (OffInterval != 1) {
+					string += "s"
+				}
+				string += "\n" + match[3] + " time"
+				RepeatCount = parseInt(match[3])
+				if (RepeatCount != 1) {
+					string += "s"
+				}
+				document.getElementById("nextProgram").innerHTML = string
+				refreshProgramDetails()
+			})
+			req.open("GET", "/nextProgram")
+			req.send()
+		}
+		function refreshCurrentProgram() {
+			req = setError(new XMLHttpRequest())
+			req.addEventListener("load", function() {
+				match = this.responseText.match(receivingProgramRe)
+				if ( (match == null) || (match.length != 4) ) {
+					document.getElementById("currentProgram").innerHTML = "error: ajpikul@gmail.com please or on facebook w/ how it occured"
+					return
+				}
+				var string
+				string = "On " + match[1] + " minute"
+				OnInterval = parseInt(match[1])
+				if (OnInterval != 1) {
+					string += "s"
+				}
+				string += "\nOff " + match[2] + " minute"
+				OffInterval = parseInt(match[2])
+				if (OffInterval != 1) {
+					string += "s"
+				}
+				string += "\n" + match[3] + " time"
+				RepeatCount = parseInt(match[3])
+				if (RepeatCount != 1) {
+					string += "s"
+				}
+				document.getElementById("currentProgram").innerHTML = string
+				refreshNextProgram()
+				refreshStatus()
+			})
+			req.open("GET", "/currentProgram")
+			req.send()
+		}
+		function refreshStatus() {
+			req = setError(new XMLHttpRequest())
+			req.addEventListener("load", function() {
+				document.getElementById("status").innerHTML = this.responseText;
+			})
+			req.open("GET", "/status")
+			req.send()
+		}
+		window.onload = function() {
+			refreshCurrentProgram()
+			refreshStatus()
+			window.setInterval(refreshCurrentProgram, 1000)
+			document.getElementById("submit").onclick = function(e) {
+				match = document.getElementById("newProgram").value.match(sendingProgramRe)
+				if ( (match == null) || (match.length != 4) ) {
+					alert("Please check your formatting")
+					return
+				}
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshCurrentProgram()
+				})
+				req.open("POST", "/submit?on="+match[1]+"&off="+match[2]+"&repeat="+match[3]) 
+				req.send()
+			}
+			document.getElementById("on").onclick = function(e) {
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshStatus()
+					refreshCurrentProgram()
+				})
+				req.open("POST", "/on")
+				req.send()
+			}
+			document.getElementById("pause").onclick = function(e) {
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshStatus()
+				})
+				req.open("POST", "/pause")
+				req.send()
+			}
+			document.getElementById("reset").onclick = function(e) {
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshStatus()
+					refreshCurrentProgram()
+				})
+				req.open("POST", "/reset")
+				req.send()
+			}
+			document.getElementById("submitManual").onclick = function(e) {
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshStatus()
+					refreshCurrentProgram()
+				})
+				textSpeed = document.getElementById("manualInput").value
+				intSpeed = parseInt(textSpeed);
+				intSpeed = intSpeed % 256;
+				numFormat = String(intSpeed).padStart(3, '0');
+				req.open("POST", "/speed?s="+String(intSpeed))
+				req.send()
+			}
+		}
+	</script>
 	<body>
-		Format your instructions like this:
-		<pre>
-	On 1 Minute
-	Off 1 Minute
-	100 Times
+		Current Program (and how you should format your instructions):
+		<pre id="currentProgram">
+		<!-- html: dynamic GET -->
 		</pre>
-		<textarea>
+		<br>
+		<br>
+		Next Program (after reset or finish):
+		<pre id="nextProgram">
+		<!-- html: dynamic GET -->
+		</pre>
+		<br>
+		<br>
+		New Program:
+		<br>
+		<textarea id="newProgram" style="width:30ex; height:10ex">
+On 10 minutes
+Off 1 minute
+60 times
+		</textarea>
+		<br><br>
+		Status: <span id="status"></span>
+		<pre id="programDetails">
+		<!-- html: dynamic GET -->
+		</pre>
+		<br>
+		<br>
+		<br>
+		<br>
+		<button id="submit">Submit Program</button> <!-- dynamic SEND // check with regex, parse into post, wait, and refresh-->
+		<button id="on">Turn On</button> <!-- dynamic SEND // wait and refresh -->
+		<button id="pause">Pause</button> <!-- dynamic SEND // wait and refresh -->
+		<button id="reset">Reset</button> <!-- dynamic SEND // wait and refresh -->
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
 		This is a bike melter, lovingly made by Andrew Pikul (ajpikul.com when you get to normal internet).
+		<br><br><b>Manual Control:</b><br>	
+		<br><textarea id="manualInput"></textarea><br><br><button id="submitManual">Submit speed manually (0-255)</button>
 	</body>
 </html>
