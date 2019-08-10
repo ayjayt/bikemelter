@@ -178,6 +178,15 @@
 				req.open("POST", "/speed?s="+String(intSpeed))
 				req.send()
 			}
+			document.getElementById("reverse").onclick = function(e) {
+				req = setError(new XMLHttpRequest())
+				req.addEventListener("load", function() {
+					refreshStatus()
+					refreshCurrentProgram()
+				})
+				req.open("POST", "/reverse")
+				req.send()
+			}
 		}
 	</script>
 	<body>
@@ -221,5 +230,7 @@ Off 1 minute
 		This is a bike melter, lovingly made by Andrew Pikul (ajpikul.com when you get to normal internet).
 		<br><br><b>Manual Control:</b><br>	
 		<br><textarea id="manualInput"></textarea><br><br><button id="submitManual">Submit speed manually (0-255)</button>
+		<br><br>
+		<button id="reverse">Reverse Direction</button>
 	</body>
 </html>

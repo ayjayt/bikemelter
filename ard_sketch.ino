@@ -12,12 +12,16 @@ IPAddress IP;
 
 const int speedPinA = 16;
 const int directionPinA = 2;
+int directionA = 0;
 const int speedPinB = 14;
 const int directionPinB = 12;
-const int freq = 5000;
+int directionB = 0;
+const int freq = 100000;
 const int channelA = 0; // PWM connects to GPIO via "Channel"
 const int channelB = 1;
 const int resolution = 8;
+int16_t currentSpeed;
+
 
 volatile int interruptCounter;
 int totalInterruptCounter;
@@ -57,6 +61,7 @@ void setOn() {
   
   // Turn On
   Serial.println("Turning on");
+  motorsOn();
   ReDraw();
 }
 void setPause() {
@@ -65,6 +70,7 @@ void setPause() {
 
   oldCounter = interruptCounter;
   // Stop Flow
+  motorsOff();
   Serial.println("Pausing");
   ReDraw();
 }
@@ -80,6 +86,7 @@ void setReset() {
   repeatCounter = 0;
 
   Serial.println("Reset and paused");
+  motorsOff();
   ReDraw();
 }
 
@@ -126,20 +133,26 @@ void DrawErr(String err) {
   while(true);
 }
 void motorsOn() {
-  ledcWrite(channelA, 200);
-  ledcWrite(channelB, 200);
+  motorSpeed(255);
 }
 
 void motorsOff() {
-  ledcWrite(channelA, 0);
-  ledcWrite(channelB, 0);
+  motorSpeed(0);
+}
+void motorSwitchDirection() {
+  directionA = 1 - directionA;
+  directionB = 1 - directionB;
+  motorSpeed(currentSpeed);
 }
 
-void motorSpeed(uint8_t speed) {
+void motorSpeed(int16_t speed) {
+  currentSpeed = speed;
   Serial.print("Speed: ");
   Serial.println(String(speed));
-  ledcWrite(channelA, speed);
-  ledcWrite(channelB, speed);
+  ledcWrite(channelA, ((int16_t)directionA * (int16_t)-255) + speed);
+  ledcWrite(channelB, ((int16_t)directionB * (int16_t)-255) + speed);
+  digitalWrite(directionPinA, directionA);
+  digitalWrite(directionPinB, directionB);
 }
 void setup() {
   ledcSetup(channelA, freq, resolution);
@@ -148,7 +161,9 @@ void setup() {
   ledcAttachPin(speedPinB, channelB);
   ledcWrite(channelA, 0);
   ledcWrite(channelB, 0);
-  
+  pinMode(directionPinA, OUTPUT);
+  pinMode(directionPinB, OUTPUT);
+  motorsOff();
   display.init();
   display.displayOff();
   display.clear();
@@ -193,10 +208,12 @@ void loop() {
               // Turning off.
               Serial.println("Turning off");
               offCounter = offint;
+              motorsOff();
             } else {
               Serial.println("Finished...");
               paused = true;
               melterStatus = "finished";
+              motorsOff();
             }
           }
         } else if (offCounter > 0) {
@@ -205,6 +222,7 @@ void loop() {
             Serial.println("Turning on");
             // Turning on.
             onCounter = onint;
+            motorsOn();
           }
         }
       }
@@ -232,6 +250,8 @@ void loop() {
               client.println(String(offint));
               client.print(String(repint));
               break;
+            } else if (header.indexOf("POST /reverse") >= 0) {
+              motorSwitchDirection();
             } else if (header.indexOf("GET /nextProgram") >= 0) {
               client.println(OnInterval);
               client.println(OffInterval);
