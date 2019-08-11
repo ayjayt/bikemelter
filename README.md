@@ -1,4 +1,4 @@
-# TOOD:
+# TODO:
 
 ## add readme explaining design choices
 
